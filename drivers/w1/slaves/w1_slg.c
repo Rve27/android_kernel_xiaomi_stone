@@ -149,8 +149,7 @@ void printf_hex(unsigned char *output, int output_len)
  */
 static int bus_send_recv(unsigned char *input, int input_len, unsigned char *output, int *output_len)
 {
-    unsigned char buffer[512];
-    unsigned char recv[512];
+    unsigned char *buffer, *recv;
     unsigned short calc_crc;
     unsigned short recv_crc;
     int index, len;
@@ -167,8 +166,19 @@ static int bus_send_recv(unsigned char *input, int input_len, unsigned char *out
         return SLG_NOT_EXIST;
     }
 
-    memset(buffer, 0, sizeof(buffer));
-    memset(recv, 0, sizeof(recv));
+    // Allocate buffers on heap instead of stack
+    buffer = kmalloc(512, GFP_KERNEL);
+    if (!buffer)
+        return -ENOMEM;
+
+    recv = kmalloc(512, GFP_KERNEL);
+    if (!recv) {
+        kfree(buffer);
+        return -ENOMEM;
+    }
+
+    memset(buffer, 0, 512);
+    memset(recv, 0, 512);
 
     memcpy(buffer, input, input_len);
     index = input_len;
@@ -192,9 +202,8 @@ RETRY:
 
     mdelay(cmd_need_wait);
 
-    memset(recv, 0, sizeof(recv));
+    memset(recv, 0, 512);
     w1_read_block(slg_slave->master, recv, 1);
-
 
     len = recv[0];
     if(len <= 200)
@@ -244,7 +253,6 @@ RETRY:
         ret = RECV_LENGTH_ERROR;
     }
 
-
 END:
     if(((ret == RECV_CRC_ERROR) || (ret == RECV_LENGTH_ERROR)) && (retry > 0))
     {
@@ -254,6 +262,10 @@ END:
     }
 
     mutex_unlock(&slg_slave->master->mutex);
+
+    // Free allocated buffers
+    kfree(buffer);
+    kfree(recv);
 
     return ret;
 }
