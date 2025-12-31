@@ -66,7 +66,6 @@
 #define GESTURE_V                               0x54
 #define GESTURE_Z                               0x41
 #define GESTURE_C                               0x34
-#define GESTURE_AOD                             0x27
 
 /*****************************************************************************
 * Private enumerations, structures and unions using typedef
@@ -209,32 +208,6 @@ static int fts_create_gesture_sysfs(struct device *dev)
 	return 0;
 }
 
-static int fts_create_gesture_procfs(struct device *dev)
-{
-	char gesture_node[256];
-	const char *path;
-	struct proc_dir_entry *entry;
-
-	path = kobject_get_path(&dev->kobj, GFP_KERNEL);
-	if (!path) {
-		FTS_ERROR("failed to get kobj path");
-		return -ENOMEM;
-	}
-
-	snprintf(gesture_node, sizeof(gesture_node), "/sys%s/fts_gesture_mode",
-		 path);
-
-	entry = proc_symlink("tp_gesture", NULL, gesture_node);
-	if (!entry) {
-		FTS_ERROR("failed to create proc symlink");
-		kfree(path);
-		return -ENOMEM;
-	}
-
-	kfree(path);
-	return 0;
-}
-
 static void fts_gesture_report(struct input_dev *input_dev, int gesture_id)
 {
 	int gesture;
@@ -258,7 +231,8 @@ static void fts_gesture_report(struct input_dev *input_dev, int gesture_id)
 		break;
 
 	case GESTURE_DOUBLECLICK:
-		gesture = KEY_WAKEUP;
+		gesture = KEY_POWER;
+
 		break;
 
 	case GESTURE_O:
@@ -296,9 +270,6 @@ static void fts_gesture_report(struct input_dev *input_dev, int gesture_id)
 	case GESTURE_C:
 		gesture = KEY_GESTURE_C;
 		break;
-
-	case GESTURE_AOD:
-		return;
 
 	default:
 		gesture = -1;
@@ -363,10 +334,6 @@ int fts_gesture_readdata(struct fts_ts_data *ts_data, u8 *data)
 	gesture->point_num = buf[3];
 	FTS_DEBUG("gesture_id=%d, point_num=%d",
 		gesture->gesture_id, gesture->point_num);
-
-	/* Filter out AOD gesture ID */
-	if (gesture->gesture_id == GESTURE_AOD)
-		return 1;
 
 	/* save point data,max:6 */
 	for (i = 0; i < FTS_GESTURE_POINTS_MAX; i++) {
@@ -476,7 +443,6 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_V);
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_Z);
 	input_set_capability(input_dev, EV_KEY, KEY_GESTURE_C);
-	input_set_capability(input_dev, EV_KEY, KEY_WAKEUP);
 
 	__set_bit(KEY_GESTURE_RIGHT, input_dev->keybit);
 	__set_bit(KEY_GESTURE_LEFT, input_dev->keybit);
@@ -492,10 +458,8 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
 	__set_bit(KEY_GESTURE_V, input_dev->keybit);
 	__set_bit(KEY_GESTURE_C, input_dev->keybit);
 	__set_bit(KEY_GESTURE_Z, input_dev->keybit);
-	__set_bit(KEY_WAKEUP, input_dev->keybit);
 
 	fts_create_gesture_sysfs(ts_data->dev);
-	fts_create_gesture_procfs(ts_data->dev);
 
 	memset(&fts_gesture_data, 0, sizeof(struct fts_gesture_st));
 	ts_data->gesture_mode = FTS_GESTURE_EN;

@@ -160,8 +160,6 @@
 
 #define _FT3658U            0x3658D488
 
-#define _FT3519T            0x3519E489
-
 /******************* Enables *********************/
 /*********** 1 to enable, 0 to disable ***********/
 
@@ -187,7 +185,7 @@
  * Gesture function enable
  * default: disable
  */
-#define FTS_GESTURE_EN                          1
+#define FTS_GESTURE_EN                          0
 
 /*
  * ESD check & protection
@@ -220,7 +218,7 @@
 /*
  * auto upgrade
  */
-#define FTS_AUTO_UPGRADE_EN                     0
+#define FTS_AUTO_UPGRADE_EN                     1
 
 /*
  * auto upgrade for lcd cfg
